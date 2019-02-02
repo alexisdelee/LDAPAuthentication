@@ -1,0 +1,179 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Game</title>
+        <link rel="stylesheet" href="/css/game.css">
+        <style>
+            .btn-connexion {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                padding: 10px;
+                text-decoration: none;
+                border-radius: 3px;
+                color: #bbada0;
+                transition: all .5s;
+            }
+
+            .btn-connexion:hover {
+                background: #bbada0;
+                color: white;
+            }
+
+            section#scores table {
+                margin: 70px auto;
+            }
+
+            section#scores table td, section#scores table th {
+                padding: 5px 10px;
+                text-align: center;
+                border: 1px solid black;
+            }
+
+            section#scores table tbody td:first-child {
+                background: #bbada0;
+                color: white;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="application">
+            <a v-if="isConnected" href="/logout" class="btn-connexion">Log out</a>
+            <a v-else href="/sign" class="btn-connexion">Log in</a>
+
+            <div class="container">
+                <div class="heading">
+                    <h1 class="title">2048</h1>
+                    <div class="score-container">0</div>
+                </div>
+                <p class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></p>
+            
+                <div class="game-container">
+                    <div class="game-message">
+                        <p></p>
+                        <div class="lower">
+                            <a class="retry-button">Try again</a>
+                        </div>
+                    </div>
+            
+                    <div class="grid-container">
+                        <div class="grid-row">
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                        </div>
+                        <div class="grid-row">
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                        </div>
+                        <div class="grid-row">
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                        </div>
+                        <div class="grid-row">
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                            <div class="grid-cell"></div>
+                        </div>
+                    </div>
+            
+                    <div class="tile-container">
+            
+                    </div>
+                </div>
+            
+                <p class="game-explanation">
+                    <strong class="important">How to play:</strong> Use your <strong>arrow keys</strong> to move the tiles. When
+                    two tiles with the same number touch, they <strong>merge into one!</strong>
+                </p>
+
+                <section id="scores" v-if="scores.length > 0">
+                    <table>
+                        <tbody>
+                            <tr v-for="(score, index) in scores">
+                                <td>{{ index + 1 }}</td>
+                                <td>{{ score.value }}</td>
+                                <td>{{ new Date(score.iat).toLocaleDateString() }}</td>
+                                <td>
+                                    <small>{{ new Date(score.iat).toLocaleTimeString() }}</small>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </div>
+
+        <script src="/js/vue.min.js"></script>
+        <script src="/js/hammer.min.js"></script>
+        <script src="/js/game.js"></script>
+        <script>
+            const core = new Vue({
+                el: "#application",
+                data: {
+                    isConnected: window.sessionStorage.getItem("token") !== null,
+                    scores: []
+                },
+                mounted: async function() {
+                    GameManager.lose = async function(score) {
+                        if (window.sessionStorage.getItem("token")) {
+                            const response = await fetch("/score", {
+                                method: "POST",
+                                headers: {
+                                    "Accept": "application/json",
+                                    "x-access-token": window.sessionStorage.getItem("token"),
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify({ score })
+                            });
+
+                            if (response.status === 200) {
+                                const data = await response.json();
+                                if (data.scores) {
+                                    core.scores = data.scores.concat(core.scores).slice(0, 5);
+                                }
+                            } else {
+                                alert(response);
+                            }
+                        }
+                    }
+
+                    // wait till the browser is ready to render the game (avoids glitches)
+                    window.requestAnimationFrame(function () {
+                        var manager = new GameManager(4, KeyboardInputManager, HTMLActuator);
+                    });
+
+                    // get last scores
+                    if (window.sessionStorage.getItem("token")) {
+                        const response = await fetch("/score", {
+                            headers: {
+                                "Accept": "application/json",
+                                "x-access-token": window.sessionStorage.getItem("token")
+                            }
+                        });
+
+                        if (response.status === 200) {
+                            if (response.redirected) {
+                                window.location.href = response.url;
+                            }
+
+                            const data = await response.json();
+                            if (data.scores) {
+                                this.scores = data.scores;
+                            }
+                        } else {
+                            alert(response);
+                        }
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>

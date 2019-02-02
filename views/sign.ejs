@@ -1,0 +1,120 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Sign in</title>
+        <link rel="stylesheet" href="/css/login.css">
+        <link rel="stylesheet" href="/css/micromodal.css">
+        <style>
+            div#modal-http-error > div.modal__overlay {
+                z-index: 19;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="application">
+            <div class="modal micromodal-slide" id="modal-http-error" aria-hidden="true">
+                <div class="modal__overlay" tabindex="-1" data-micromodal-close>
+                    <div class="modal__container" role="dialog" aria-modal="true" aria-labelledby="modal-http-error-title">
+                        <header class="modal__header">
+                            <h2 class="modal__title" id="modal-http-error-title">
+                                <p></p>
+                            </h2>
+    
+                            <button class="modal__close" aria-label="Close modal" data-micromodal-close></button>
+                        </header>
+    
+                        <main class="modal__content" id="modal-http-error-content">
+                            <p></p>
+                        </main>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="login-page">
+                <div class="form">
+                    <form class="login-form">
+                        <input v-model="username" data-id="username" type="text" placeholder="username" />
+                        <input v-model="password" data-id="password" type="password" placeholder="password" />
+                        <button v-on:click.prevent="login">login</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script src="/js/vue.min.js"></script>
+        <script src="/js/micromodal.min.js"></script>
+        <script>
+            MicroModal.open = function(header, core) {
+                document.querySelector("div#modal-http-error header h2#modal-http-error-title p").textContent = header;
+                if (Array.isArray(core)) {
+                    document.querySelector("div#modal-http-error main#modal-http-error-content p").innerHTML
+                        = "<ul><li>" + core.join("<br><li>") + "</ul>";
+                } else {
+                    document.querySelector("div#modal-http-error main#modal-http-error-content p").textContent = core;
+                }
+
+                MicroModal.show("modal-http-error");
+            };
+
+            MicroModal.init({
+                openTrigger: "data-custom-open",
+                disableScroll: false,
+                awaitCloseAnimation: true
+            });
+
+            const core = new Vue({
+                el: "#application",
+                data: {
+                    username: null,
+                    password: null
+                },
+                mounted: function() {
+                    // display error message when there is a redirection
+                    const error = new URL(window.location.href).searchParams.get("error");
+                    if (error) {
+                        MicroModal.open("Http error", decodeURIComponent(error));
+
+                        window.history.replaceState("sign", document.title, "/sign");
+                        window.sessionStorage.removeItem("token");
+                    } else if (window.sessionStorage.getItem("token")) {
+                        window.location.href = "/";
+                    }
+                },
+                methods: {
+                    login: async function(event) {
+                        const username = core.username;
+                        const password = core.password;
+
+                        if (!!username && !!password) {
+                            const response = await fetch("/sign", {
+                                method: "POST",
+                                headers: {
+                                    "Accept": "application/json",
+                                    "Content-Type": "application/json",
+                                    "x-access-token": window.sessionStorage.getItem("token")
+                                },
+                                body: JSON.stringify({
+                                    username,
+                                    password
+                                })
+                            });
+
+                            const data = await response.json();
+
+                            try {
+                                if (response.status >= 400) {
+                                    throw new Error(response.statusText);
+                                }
+
+                                window.sessionStorage.setItem("token", data.token);
+                                window.location.href = "/";
+                            } catch(err) {
+                                MicroModal.open("Http error: " + err.message, data.errors)
+                            }
+                        }
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
