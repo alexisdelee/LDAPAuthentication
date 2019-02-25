@@ -28,5 +28,8 @@
         "@types/mysql": "^2.15.5",
         "ts-node": "^7.0.1",
         "typescript": "^3.2.2"
+    },
+    "engines": {
+        "node": "10.9.0"
     }
 }

@@ -20,6 +20,6 @@ application.use((error: any, request: express.Request, response: express.Respons
     }
 });
 
-application.listen(webconfig.application.port, () => {
-    console.log("Worker " + process.pid + " running a dev server listening on port " + webconfig.application.port);
+application.listen(process.env.PORT || webconfig.application.port, () => {
+    console.log("Worker " + process.pid + " running a dev server listening on port " + (process.env.PORT || webconfig.application.port));
 });
