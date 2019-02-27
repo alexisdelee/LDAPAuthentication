@@ -10,7 +10,7 @@ export default class Sign {
         this.router = Router();
 
         this.router.get("/", this.main.bind(this.main));
-        this.router.post("/", this.login.bind(this.login));
+        this.router.post("/api", this.login.bind(this.login));
     }
 
     private main(request: Request, response: Response): void {

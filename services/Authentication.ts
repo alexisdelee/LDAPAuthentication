@@ -1,4 +1,5 @@
 const LdapAuth = require("ldapauth-fork");
+const got = require("got");
 
 import { verify, sign } from "jsonwebtoken";
 
@@ -33,7 +34,21 @@ export default class Authentication {
         return Authentication.getToken(data, unlimited);
     }
 
-    ldap_authenticate(): Promise<any> {
+    static isInAdminGroup(userId: string): Promise<any> {
+        return new Promise(async (resolve, reject) => {
+            const response = await got.extend({
+                baseUrl: "https://console.jumpcloud.com",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": webconfig.jumpcloud["x-api-key"]
+                }
+            }).get("/api/v2/usergroups/" + webconfig.jumpcloud.usergroups.admin + "/members");
+
+            resolve(JSON.parse(response.body).some(usergroup => usergroup.to.id === userId));
+        });
+    }
+
+    public ldap_authenticate(): Promise<any> {
         const self = this;
 
         return new Promise((resolve, reject) => {
@@ -46,12 +61,14 @@ export default class Authentication {
                 reconnect: true
             });
 
-            self.__ldap_instance__.authenticate(self.username, self.password, function(err, user) {
+            self.__ldap_instance__.authenticate(self.username, self.password, async function(err, user) {
                 try {
                     if (err) throw err;
     
-                    const { uidNumber } = user;
-                    resolve(Authentication.getToken({ uid: uidNumber } as Token));
+                    const uid: string = await self.getUserId();
+                    const isAdmin: boolean = await Authentication.isInAdminGroup(uid);
+                    
+                    resolve(Authentication.getToken({ uid, isAdmin } as Token));
                 } catch(err) {
                     reject([
                         err instanceof Error
@@ -62,6 +79,22 @@ export default class Authentication {
                     self.__ldap_instance__.close();
                 }
             });
+        });
+    }
+
+    private getUserId(): Promise<any> {
+        const self = this;
+
+        return new Promise(async (resolve, reject) => {
+            const response = await got.extend({
+                baseUrl: "https://console.jumpcloud.com",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-api-key": webconfig.jumpcloud["x-api-key"]
+                }
+            }).get("/api/systemusers");
+
+            resolve(JSON.parse(response.body).results.find(user => user.username === self.username)._id);
         });
     }
 }

@@ -7,6 +7,7 @@ import InternalError from "./models/exceptions/InternalError";
 import Index from "./routes/Index";
 import Sign from "./routes/Sign";
 import Score from "./routes/Score";
+import Board from "./routes/Board";
 
 class Application {
     public application: express.Application;
@@ -16,8 +17,6 @@ class Application {
         this.application = express();
 
         this.application.use((error: any, request: express.Request, response: express.Response, next: express.NextFunction) => {
-            console.log(error);
-
             try {
                 if (!request.headers["Content-Type"]) {
                     throw new InternalError("missing content type");
@@ -60,6 +59,7 @@ class Application {
         this.application.use("/", new Index().router);
         this.application.use("/sign", new Sign().router);
         this.application.use("/score", new Score().router);
+        this.application.use("/board", new Board().router);
     }
 }
 

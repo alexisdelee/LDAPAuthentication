@@ -2,6 +2,7 @@ const lodashId = require("lodash-id");
 
 import * as lowdb from "lowdb";
 import * as FileAsync from "lowdb/adapters/FileAsync";
+import ScoreBean from "../models/Score";
 
 export default class Score {
     private static getInstance(): Promise<any> {
@@ -14,23 +15,44 @@ export default class Score {
         });
     }
 
-    static read(uid: number, last: number): Promise<Array<number>> {
+    static MAX = 5;
+
+    static read(uid: string, last: number): Promise<Array<ScoreBean>> {
         return new Promise(async (resolve, reject) => {
             let collection = ((await Score.getInstance()) as any)
                 .defaults({ scores: {} })
                 .get("scores")
                 .defaults({ [ uid ]: [] });
             
-            const scores = collection
+            const scores: Array<ScoreBean> = collection
                 .get(uid)
                 .take(last)
-                .value();
+                .value()
+                .map(({ value, iat }) => new ScoreBean(uid, value, iat));
             
             resolve(scores);
         });
     }
 
-    static async save(score: number, uid: number): Promise<Array<number>> {
+    static readAll(): Promise<Array<ScoreBean>> {
+        return new Promise(async (resolve, reject) => {
+            const results: any = ((await Score.getInstance()) as any)
+                .defaults({ scores: {} })
+                .get("scores")
+                .value();
+
+            let scores: Array<ScoreBean> = [];
+            for (const uid in results) {
+                for (const score of results[uid]) {
+                    scores.push(new ScoreBean(uid, score.value, score.iat));
+                }
+            }
+            
+            resolve(scores);
+        });
+    }
+
+    static async save(score: number, uid: string): Promise<Array<ScoreBean>> {
         return new Promise(async (resolve, reject) => {
             let collection = ((await Score.getInstance()) as any)
                 .defaults({ scores: {} })
@@ -44,7 +66,7 @@ export default class Score {
                 .unshift(data)
                 .write();
             
-            resolve([ data ]);
+            resolve([ new ScoreBean(uid, data.value, data.iat) ]);
         });
     }
 }

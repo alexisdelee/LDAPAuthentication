@@ -1,0 +1,84 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Board for administrator</title>
+        <style>
+            section#scores table {
+                margin: 70px auto;
+            }
+
+            section#scores table td, section#scores table th {
+                padding: 5px 10px;
+                text-align: center;
+                border: 1px solid black;
+            }
+
+            section#scores table tbody td:first-child {
+                background: #bbada0;
+                color: white;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="application">
+            <section id="scores" v-if="scores.length > 0">
+                <table>
+                    <tbody>
+                        <tr v-for="(score, index) in scores">
+                            <td>{{ score.uid }}</td>
+                            <td>{{ score.value }}</td>
+                            <td>{{ new Date(score.iat).toLocaleDateString() }}</td>
+                            <td>
+                                <small>{{ new Date(score.iat).toLocaleTimeString() }}</small>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+
+        <script src="/js/vue.min.js"></script>
+        <script>
+            const core = new Vue({
+                el: "#application",
+                data: {
+                    scores: []
+                },
+                methods: {
+                    getGroupsFromScore: function() {
+                        return core.scores.reduce(function (acc, el){
+                            acc[el.uid] = acc[el.uid] || [];
+                            acc[el.uid].push(el);
+
+                            return acc;
+                        }, []);
+                    }
+                },
+                mounted: async function() {
+                    const response = await fetch("/board/api", {
+                        method: "GET",
+                        headers: {
+                            "Accept": "application/json",
+                            "Content-Type": "application/json",
+                            "x-access-token": window.sessionStorage.getItem("token")
+                        }
+                    });
+
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                    
+                    if (response.status === 200) {
+                        const data = await response.json();
+                        if (data.scores) {
+                            core.scores = data.scores;
+                        }
+                    } else {
+                        alert(response);
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>

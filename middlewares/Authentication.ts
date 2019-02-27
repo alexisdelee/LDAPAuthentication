@@ -4,15 +4,17 @@ import Authentication from "../services/Authentication";
 import Unauthorized from "../models/exceptions/Unauthorized";
 import Token from "../models/Token";
 
-export default () => {
+export default (isAdmin: boolean = false) => {
     return async (request: Request, response: Response, next: NextFunction) => {
         try {
             const token: string = request.query.token || request.headers["x-access-token"];
             const data: Token = Authentication.identifyProvider(token);
 
-            (request as any).token = { // to avoid warning
-                uid: data.uid
-            };
+            (request as any).token = { ...data }; // to avoid warning
+
+            if (isAdmin && !data.isAdmin) {
+                throw new Unauthorized("this access is restricted to the administrator");
+            }
 
             // overload .json() method to inject refresh token
             const send: any = response.json;
@@ -24,7 +26,7 @@ export default () => {
                 send.call(this, response);
             } as Send;
         } catch (err) {
-            if (err.name === "TokenExpiredError" || err.name === "JsonWebTokenError") {
+            if (err.name === "TokenExpiredError" || err.name === "JsonWebTokenError" || err instanceof Unauthorized) {
                 // return response.status(Unauthorized.statusCode).json({ errors: ["token: " + err.message] });
                 return response.redirect("/sign?error=" + encodeURIComponent(err.message));
             } else {
